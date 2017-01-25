@@ -100,4 +100,30 @@ class RecurisiveHasBasicSpec extends WordSpec {
       }
     }
   }
+
+  "CRC32 of Hash table" when {
+    "empty" should {
+      "be equal 0" in {
+        var table = AggregateTable.empty[Long]
+        assert(table.crc32 == 0l)
+      }
+    }
+
+    "have some data" should {
+      "calc same crc32 independenly of add order" in {
+        val SIZE = 1000
+        val data = (1 to SIZE).map(x => rand)
+
+        var table1 = AggregateTable.empty[Long]
+        for(d <- data)
+          table1.add(d)
+
+        var table2 = AggregateTable.empty[Long]
+        for(d <- scala.util.Random.shuffle(data))
+          table2.add(d)
+
+        assert(table1.crc32 == table2.crc32)
+      }
+    }
+  }
 }

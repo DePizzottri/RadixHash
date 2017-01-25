@@ -1,6 +1,7 @@
 package depizzottri
 
 import scala.collection.immutable.{HashSet, HashMap}
+import com.jcraft.jzlib._
 
 object RecursiveHashTable {
   //val RECURSION_THRESHOLD = 10
@@ -27,6 +28,8 @@ abstract class RecursiveHashTable[T] {
 
   def size:Long
   def crc32:Long
+
+  def crc32WithLen:(Long,Long)
 
   def print:Unit
 }
@@ -71,7 +74,21 @@ class AggregateTable[T](data:HashMap[Long, RecursiveHashTable[T]], val depth:Int
 
   override def size = data.foldLeft(0l){(s, d) => s + d._2.size}
   override def crc32 = {
-    throw new Exception()
+    data.map{ case (idx, elem) =>
+      elem.crc32WithLen
+    }
+    .foldLeft(0l){ (prev, cur) =>
+      JZlib.crc32_combine(prev, cur._1, cur._2)
+    }
+  }
+
+  override def crc32WithLen = {
+    data.map{ case (idx, elem) =>
+      elem.crc32WithLen
+    }
+    .foldLeft((0l, 0l)){ (prev, cur) =>
+      (JZlib.crc32_combine(prev._1, cur._1, cur._2), prev._2 + cur._2)
+    }
   }
 }
 
@@ -160,6 +177,25 @@ class FinalTable[T](val data:HashSet[T], val depth:Int) extends RecursiveHashTab
 
   override def size = data.size
   override def crc32 = {
-    throw new Exception()
+    var crc32 = new CRC32();
+    data.foreach { elem =>
+      //val buf = elem.toBinaryString
+      //val buf = ( java.math.BigInteger.valueOf(elem)).toByteArray()
+      import scala.math.BigInt
+      val buf = BigInt(elem.asInstanceOf[Long]).toByteArray
+      crc32.update(buf, 0, buf.length)
+    }
+    crc32.getValue
+  }
+
+  override def crc32WithLen = {
+    var crc32 = new CRC32();
+    val len = data.foldLeft(0l) { (prev, cur) =>
+      import scala.math.BigInt
+      val buf = BigInt(cur.asInstanceOf[Long]).toByteArray
+      crc32.update(buf, 0, buf.length)
+      prev + buf.length
+    }
+    (crc32.getValue, len)
   }
 }
