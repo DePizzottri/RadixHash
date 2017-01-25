@@ -4,7 +4,6 @@ import scala.collection.immutable.{HashSet, HashMap}
 import com.jcraft.jzlib._
 
 object RecursiveHashTable {
-  //val RECURSION_THRESHOLD = 10
 
   val BUCKET_SIZE = 256l //must be power of two
   val MASK = BUCKET_SIZE - 1
@@ -14,9 +13,9 @@ object RecursiveHashTable {
       // This function ensures that hashCodes that differ only by
       // constant multiples at each bit position have a bounded
       // number of collisions (approximately 8 at default load factor).
-//      val hr = h ^ ((h >>> 20) ^ (h >>> 12));
-//      hr ^ (hr >>> 7) ^ (hr >>> 4);
-    h.hashCode
+     val hh = h.hashCode
+     val hr = hh ^ ((hh >>> 20) ^ (hh >>> 12))
+     hr ^ (hr >>> 7) ^ (hr >>> 4)
   }
 }
 
@@ -41,26 +40,15 @@ class AggregateTable[T](data:HashMap[Long, RecursiveHashTable[T]], val depth:Int
   override def print =
     data.foreach{_._2.print}
 
-//  def this(ind:List[RecursiveHashTable[T]]) = {
-//    this(ind.zipWithIndex.map{
-//      case(x,y)=>(y.toLong,x)
-//      }.toMap)
-//  }
-
   override def add(t:T): RecursiveHashTable[T] = {
     val idx = indexFor(hash(t), depth)
     val subbucket = data(idx)
-    ///val sz = size
-//    new AggregateTable((data diff Array(data(idx))) :+ subbucket.add(t))
-    //new AggregateTable((data.take(idx) :+ subbucket.add(t)) ++ data.drop(idx+1), depth)
-    //val newData = data.updated(idx, subbucket.add(t))
     new AggregateTable(data.updated(idx, subbucket.add(t)), depth)
   }
 
   override def remove(t:T) : RecursiveHashTable[T] = {
     val idx = indexFor(hash(t), depth)
     val subbucket = data(idx)
-    //new AggregateTable((data diff Array(data(idx))) :+ subbucket.remove(t), depth)
     new AggregateTable(data.updated(idx, subbucket.remove(t)), depth)
   }
 
@@ -73,6 +61,7 @@ class AggregateTable[T](data:HashMap[Long, RecursiveHashTable[T]], val depth:Int
   override def isEmpty = false
 
   override def size = data.foldLeft(0l){(s, d) => s + d._2.size}
+
   override def crc32 = {
     data.map{ case (idx, elem) =>
       elem.crc32WithLen
@@ -157,8 +146,7 @@ class FinalTable[T](val data:HashSet[T], val depth:Int) extends RecursiveHashTab
 
       var table:RecursiveHashTable[T] = new AggregateTable[T](HashMap(ar:_*), depth+1)
 
-      val dt = data+t
-      for(d <- (dt)) yield {
+      for(d <- (data+t)) yield {
         table = table.add(d)
       }
 
@@ -179,8 +167,6 @@ class FinalTable[T](val data:HashSet[T], val depth:Int) extends RecursiveHashTab
   override def crc32 = {
     var crc32 = new CRC32();
     data.foreach { elem =>
-      //val buf = elem.toBinaryString
-      //val buf = ( java.math.BigInteger.valueOf(elem)).toByteArray()
       import scala.math.BigInt
       val buf = BigInt(elem.asInstanceOf[Long]).toByteArray
       crc32.update(buf, 0, buf.length)
