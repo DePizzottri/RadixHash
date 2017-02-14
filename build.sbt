@@ -1,6 +1,6 @@
 fork in run := true
 
-javaOptions in run ++= Seq("-Xmx6G")
+javaOptions in run ++= Seq("-Xmx10G")
 
 javaOptions in run ++= Seq("-Xss1G")
 
